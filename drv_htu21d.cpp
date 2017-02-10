@@ -115,9 +115,9 @@ float DRV_HTU21D::getTemp_C(void) {
 }
  
 /**
- * @brief      Gets temperature in Celsius from the sensor.
+ * @brief      Gets temperature in Fahrenheit from the sensor.
  *
- * @return     Temperature in Celsius.
+ * @return     Temperature in Fahrenheit.
  */
 float DRV_HTU21D::getTemp_F(void) {
     float tempC = getTemp_C();
