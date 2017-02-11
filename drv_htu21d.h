@@ -29,7 +29,6 @@ class DRV_HTU21D {
         void setHeater( bool );
     private:
         bool getConfig(void);
-        uint8_t calc_crc8(uint16_t);
         uint8_t check_crc8(uint16_t, uint8_t);
         uint8_t user_register;
         bool config_changed;
