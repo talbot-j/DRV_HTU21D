@@ -22,13 +22,14 @@ class DRV_HTU21D {
         bool init( void );
         void reset(void);
         void setConfig( void );
+        uint16_t getConfig(void);
         float getTemp_C(void);
         float getTemp_F(void);
         float getHumidity(void);
         void setResolution( uint8_t );
         void setHeater( bool );
     private:
-        bool getConfig(void);
+        bool read_HUT_Config(void);
         uint8_t check_crc8(uint16_t, uint8_t);
         uint8_t user_register;
         bool config_changed;

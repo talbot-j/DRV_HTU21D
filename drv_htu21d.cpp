@@ -1,4 +1,4 @@
-//------------------------------------------------------------------------------
+    //------------------------------------------------------------------------------
 /// @addtogroup htu21d_driver HUT21D Driver
 ///
 /// @file drv_htu21d.cpp
@@ -50,7 +50,7 @@
  */
 DRV_HTU21D::DRV_HTU21D() {
     config_changed = false;
-    user_register = 0b00000010;
+    user_register = 0x02;
 }
 
 /**
@@ -86,35 +86,37 @@ void DRV_HTU21D::reset(void) {
  * @return     Temperature in Celsius.
  */
 float DRV_HTU21D::getTemp_C(void) {
-    
+    uint8_t bytes_rxd;
+    float tempC_f = -999;
     // OK lets ready!
     Wire.beginTransmission(DRV_HTU21D_I2CADDR);
     Wire.write(DRV_HTU21D_READTEMP);
     Wire.endTransmission();
 
-    delay(50); // add delay between request and actual read!
+    delay(50);
 
-    Wire.requestFrom(DRV_HTU21D_I2CADDR, 3);
-    while (!Wire.available()) {}
+    bytes_rxd = Wire.requestFrom(DRV_HTU21D_I2CADDR, 3);
+    /* if les than bytes have not been RXD then the data is not valid */
+    if ( 3 < bytes_rxd ) {
+        uint16_t raw_tempC;
+        raw_tempC = Wire.read();
+        raw_tempC <<= 8;
+        raw_tempC |= Wire.read();
 
-    uint16_t raw_tempC;
-    raw_tempC = Wire.read();
-    raw_tempC <<= 8;
-    raw_tempC |= Wire.read();
-
-    uint8_t crc = Wire.read();
-    
-    float tempC_f = -999;
-    if ( 0 == check_crc8( raw_tempC, crc ) ) {
-        if ( raw_tempC & 0x02 ) {
-            tempC_f = -990;
-        }
-        else {
-            raw_tempC &= ~(0x03);
-            tempC_f = (float) raw_tempC;
-            tempC_f = ((175.72*tempC_f)/65536) - 46.85;
+        uint8_t crc = Wire.read();
+        
+        if ( 0 == check_crc8( raw_tempC, crc ) ) {
+            if ( raw_tempC & 0x02 ) {
+                tempC_f = -990;
+            }
+            else {
+                raw_tempC &= ~(0x03);
+                tempC_f = (float) raw_tempC;
+                tempC_f = ((175.72*tempC_f)/65536) - 46.85;
+            }
         }
     }
+    
     return tempC_f;
 }
  
@@ -135,34 +137,37 @@ float DRV_HTU21D::getTemp_F(void) {
  * @return     The humidity %.
  */
 float DRV_HTU21D::getHumidity(void) {
+    uint8_t rxd_bytes;
+    float hum_f = -999;
 
     Wire.beginTransmission(DRV_HTU21D_I2CADDR);
     Wire.write(DRV_HTU21D_READHUM);
     Wire.endTransmission();
 
-    delay(50); // add delay between request and actual read!
+    delay(50);
 
-    Wire.requestFrom(DRV_HTU21D_I2CADDR, 3);
-    while (!Wire.available()) {}
+    rxd_bytes = Wire.requestFrom(DRV_HTU21D_I2CADDR, 3);
+    /* if les than bytes have not been RXD then the data is not valid */
+    if ( 3 < rxd_bytes ) {
+        uint16_t raw_hum;
+        raw_hum = Wire.read();
+        raw_hum <<= 8;
+        raw_hum |= Wire.read();
 
-    uint16_t raw_hum;
-    raw_hum = Wire.read();
-    raw_hum <<= 8;
-    raw_hum |= Wire.read();
-
-    //(((uint16_t)msb)<<8) | (lsb);
-    /** @todo use the crc as a check for valid data. */
-    uint8_t crc = Wire.read();
-    
-    float hum_f = -999;
-    if ( 0 == check_crc8(raw_hum, crc) ) {
-        hum_f = -990;
-        if ( raw_hum & 0x02 ) {
-            raw_hum &= ~(0x03);
-            hum_f = (float) raw_hum;
-            hum_f = ((125.0*hum_f)/65536) - 6;
-        }
-    } 
+        //(((uint16_t)msb)<<8) | (lsb);
+        /** @todo use the crc as a check for valid data. */
+        uint8_t crc = Wire.read();
+        
+        
+        if ( 0 == check_crc8(raw_hum, crc) ) {
+            hum_f = -990;
+            if ( raw_hum & 0x02 ) {
+                raw_hum &= ~(0x03);
+                hum_f = (float) raw_hum;
+                hum_f = ((125.0*hum_f)/65536) - 6;
+            }
+        } 
+    }
     return hum_f;
 }
 
@@ -205,10 +210,10 @@ void DRV_HTU21D::setHeater( bool on ) {
     uint8_t user_old;
     user_old = user_register;
     if ( on ) {
-        user_register |= 0b11111011;
+        user_register |= 0b00000100;
     }
     else {
-        user_register &= 0b00000100;
+        user_register &= 0b11111011;
     }
     if ( user_register ^ user_old ) {
         config_changed = true;
@@ -217,16 +222,57 @@ void DRV_HTU21D::setHeater( bool on ) {
 }
 
 /**
- * @brief      Turns the Heater ON  / OFF
- *
- * @param[in]  on    if true, enable the heater, if false turn off the heater.
+ * @brief      Writes the user_register to the User Configuration register.
+ *             Functions like setResolution and setHeater modify the
+ *             user_register and this routine write that config to the HTU21.
  */
 void DRV_HTU21D::setConfig( void ) {
-    
+    if ( config_changed ) {
+        Wire.beginTransmission(DRV_HTU21D_I2CADDR);
+        Wire.write(DRV_HTU21D_WRITE_USR_REG);
+        Wire.write(user_register);
+        if ( 0 == Wire.endTransmission() ) {
+            config_changed = false;
+        }
+    }
 }
 
-bool DRV_HTU21D::getConfig( void ) {
+/**
+ * @brief      Reads the HTU21's user register and stores us the user_register to the User Configuration register.
+ *             Functions like setResolution and setHeater modify the
+ *             user_register and this routine write that config to the HTU21.
+ */
+uint16_t DRV_HTU21D::getConfig( void ) {
+    uint16_t resp;
+    if ( read_HUT_Config() ) {
+        resp = (uint16_t) user_register;
+    }
+    else {
+        resp = 0xEFA5;
+    }
+    return resp;
+}
 
+/**
+ * @brief      Reads the HTU21's user register and stores us the user_register to the User Configuration register.
+ *             Functions like setResolution and setHeater modify the
+ *             user_register and this routine write that config to the HTU21.
+ */
+bool DRV_HTU21D::read_HUT_Config( void ) {
+    bool success = false;
+    uint8_t tmp_cfg = 0;
+    Wire.beginTransmission(DRV_HTU21D_I2CADDR);
+    Wire.write(DRV_HTU21D_READ_USR_REG);
+    Wire.endTransmission();
+
+    Wire.requestFrom(DRV_HTU21D_I2CADDR, 1);
+    while ( Wire.available() < 1 );
+    tmp_cfg = Wire.read();
+    //if ( 0 == Wire.endTransmission() ) {
+        user_register = tmp_cfg;
+        success = true;
+    //}
+    return success;
 }
 
 /**
