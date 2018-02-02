@@ -98,6 +98,7 @@ float DRV_HTU21D::getTemp_C(void) {
     bytes_rxd = Wire.requestFrom(DRV_HTU21D_I2CADDR, 3);
     /* if les than bytes have not been RXD then the data is not valid */
     if ( 3 < bytes_rxd ) {
+        tempC_f = -998;
         uint16_t raw_tempC;
         raw_tempC = Wire.read();
         raw_tempC <<= 8;
@@ -149,6 +150,7 @@ float DRV_HTU21D::getHumidity(void) {
     rxd_bytes = Wire.requestFrom(DRV_HTU21D_I2CADDR, 3);
     /* if les than bytes have not been RXD then the data is not valid */
     if ( 3 < rxd_bytes ) {
+        hum_f = -998;
         uint16_t raw_hum;
         raw_hum = Wire.read();
         raw_hum <<= 8;
