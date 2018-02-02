@@ -23,16 +23,56 @@ DRV_HTU21D hum_sensor = DRV_HTU21D();
 
 void setup() {
     Serial.begin(9600);
+    #if 1
     if ( hum_sensor.init() ) {
         Serial.println("\n\nHumidity Sensor Init'd!");
     }
     else {
         Serial.println("\n\nERR: Hum Sensor FAILED Init!");
     }
+    #endif
+
 }
+
+uint8_t loops = 0;
 
 void loop() {
     float temp_c, temp_f;
+
+    /* Perform basic tests - read and write user register data, read
+     * temperatures (insure temp C and temp F) return the "same" temperature.
+     * Other than that a second calibrated device will be required. */
+    if ( loops < 1 ) {
+        hum_sensor.setHeater( true );
+        hum_sensor.setConfig();
+        if ( 0x06 != hum_sensor.getConfig() ) {
+            Serial.println("ERROR in setHeater(true)!");
+            while(1);
+        }
+        hum_sensor.setHeater( false );
+        hum_sensor.setConfig();
+        if ( 0x02 != hum_sensor.getConfig() ) {
+            Serial.println("ERROR in setHeater(false)!");
+            while(1);
+        }
+        hum_sensor.setHeater( true );
+        hum_sensor.setConfig();
+        hum_sensor.reset();
+        if ( 0x02 != hum_sensor.getConfig() ) {
+            Serial.println("ERROR in reset!");
+            while(1);
+        }
+        Serial.println("All Basic Tests pass!");
+    }
+    else if ( loops < 10 ) {
+        hum_sensor.setHeater( true );
+        hum_sensor.setConfig();
+    }
+    else {
+        hum_sensor.setHeater( false );
+        hum_sensor.setConfig();
+    }
+    loops++;
 
     // Read and display temperature 
     temp_c = hum_sensor.getTemp_C();
