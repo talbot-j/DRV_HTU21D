@@ -42,6 +42,12 @@
 #define DRV_HTU21D_MIDRES          2
 #define DRV_HTU21D_HIRES           3
 
+#define DRV_HTU21D_READ_TEMP_LEN 3
+#define DRV_HTU21D_READ_HUMD_LEN 3
+
+#define DRV_HTU21D_EXPECTED_TEMP_BYTES (DRV_HTU21D_READ_TEMP_LEN - 1)
+#define DRV_HTU21D_EXPECTED_HUMD_BYTES (DRV_HTU21D_READ_HUMD_LEN - 1)
+
 /* poly:  x^8 + x^5 + x^4 + 1 */    
 #define CRC8_POLYNOMINAL (0b100110001)
 
@@ -97,7 +103,7 @@ float DRV_HTU21D::getTemp_C(void) {
 
     bytes_rxd = Wire.requestFrom(DRV_HTU21D_I2CADDR, 3);
     /* if les than bytes have not been RXD then the data is not valid */
-    if ( 3 < bytes_rxd ) {
+    if ( 2 < bytes_rxd ) {
         tempC_f = -998;
         uint16_t raw_tempC;
         raw_tempC = Wire.read();
@@ -149,7 +155,7 @@ float DRV_HTU21D::getHumidity(void) {
 
     rxd_bytes = Wire.requestFrom(DRV_HTU21D_I2CADDR, 3);
     /* if les than bytes have not been RXD then the data is not valid */
-    if ( 3 < rxd_bytes ) {
+    if ( 2 < rxd_bytes ) {
         hum_f = -998;
         uint16_t raw_hum;
         raw_hum = Wire.read();
